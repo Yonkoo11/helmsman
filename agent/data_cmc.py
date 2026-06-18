@@ -14,6 +14,13 @@ from dataclasses import dataclass
 
 import requests
 
+try:  # load project .env (gitignored) so CMC_API_KEY is available
+    from dotenv import load_dotenv
+    from pathlib import Path
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:  # python-dotenv ships with bnbagent; degrade gracefully
+    pass
+
 CMC_BASE = "https://pro-api.coinmarketcap.com"
 
 
