@@ -9,6 +9,7 @@ CMC_API_KEY + TWAK creds + a funded agent wallet) to trade live.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from . import data_cmc, strategy
@@ -53,7 +54,9 @@ def run_once(dry_run: bool, fg_value: float | None) -> int:
           f"{trade.sell_symbol}->{trade.buy_symbol}")
 
     # 4. Price the swap, then GUARDRAIL vets it (final say).
-    ex = Executor(chain="bsc", dry_run=dry_run)
+    #    Wallet password for live signing comes from the env, never hardcoded.
+    ex = Executor(chain="bsc", dry_run=dry_run,
+                  password=None if dry_run else os.getenv("TWAK_WALLET_PASSWORD"))
     q = ex.quote(trade.sell_symbol, trade.buy_symbol, trade.notional_usd)
     vetted = type(trade)(trade.sell_symbol, trade.buy_symbol,
                          trade.notional_usd, q.slippage_bps)
