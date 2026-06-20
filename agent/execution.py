@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 
 
@@ -118,3 +119,18 @@ class Executor:
         tx = out.get("txHash") or out.get("hash") or out.get("transactionHash")
         return SwapResult(tx_hash=tx, dry_run=False,
                           detail=str(out.get("status", out.get("provider", "submitted"))))
+
+    def confirm(self, tx_hash: str, tries: int = 12, delay_s: float = 3.0) -> bool:
+        """Poll a tx until on-chain confirmed. Returns True only on confirmed+success.
+
+        Used to gate state recording: a trade is only counted once the chain
+        confirms it, so a submit-then-crash can't corrupt turnover/peak state.
+        """
+        for _ in range(tries):
+            out = _twak(["tx", tx_hash, "--chain", self.chain])
+            if out.get("failed"):
+                return False
+            if out.get("confirmed"):
+                return True
+            time.sleep(delay_s)
+        return False

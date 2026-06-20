@@ -1,5 +1,23 @@
 # Helmsman — Progress
 
+## 2026-06-20 — Senior review + real-balance wiring
+### What Changed (Plain English)
+The agent now reads your real wallet balance and remembers its high-water mark
+between runs, so the "stop trading if down 15%" safety brake can actually work
+(before, it could never trigger). In a live read it correctly refused to trade
+the tiny test balance under the real safety rules. Added a check that a trade is
+only counted once the blockchain confirms it.
+### Fixed (review findings 1,2,3)
+- Persistent risk state (agent/state.py): peak equity + daily turnover survive
+  restarts, UTC day rollover, atomic + corruption-safe writes. 7 tests.
+- Real BSC portfolio wired into the loop (agent/portfolio.py) — replaces the
+  synthetic $1,000. Verified against the live wallet ($4.05).
+- Post-trade confirmation (Executor.confirm) before state is recorded.
+### Still open (backlog in ai/senior-review.md): 4 token-address pinning,
+  5 daily-qualify trade, 6 MEV/slippage, 7 single-instance lock, 8 equity x-check.
+
+
+
 ## 2026-06-20 — Phase 1 PASSED (live on BSC mainnet)
 
 ### What Changed (Plain English)
