@@ -17,10 +17,11 @@ import argparse
 import os
 import sys
 
-from . import data_cmc, portfolio, state, strategy
+from . import data_cmc, market_gate, portfolio, state, strategy, token_registry
 from .data_cmc import Signal
 from .execution import Executor
 from .guardrails import Portfolio, ProposedTrade, evaluate
+from .x402_data import X402DataClient
 
 
 def _synthetic_signal(value: float) -> Signal:
@@ -56,6 +57,14 @@ def run_once(dry_run: bool, execute: bool, fg_value: float | None) -> int:
         return 0
     print(f"[decide] propose swap ${trade.notional_usd:,.2f} {trade.sell_symbol}->{trade.buy_symbol}")
 
+    # 3b. Registry gate (live): both legs must be address-verified (anti scam-ticker).
+    if not dry_run:
+        for leg in (trade.sell_symbol, trade.buy_symbol):
+            if not token_registry.is_tradable(leg):
+                print(f"[registry] {leg} not address-verified — trade BLOCKED")
+                state.save(st)
+                return 0
+
     # 4. Quote, then GUARDRAIL vets (final say).
     ex = Executor(chain="bsc", dry_run=dry_run,
                   password=None if dry_run else os.getenv("TWAK_WALLET_PASSWORD"))
@@ -70,9 +79,21 @@ def run_once(dry_run: bool, execute: bool, fg_value: float | None) -> int:
         return 0
 
     if not (execute or dry_run):
-        print("[stop]   guardrail PASSED; rerun with --execute to sign + send")
+        print("[stop]   guardrail PASSED; x402 liquidity gate + signing run at --execute")
         state.save(st)
         return 0
+
+    # 4b. x402 PAID market gate (live execute): pay CMC for live DEX liquidity on
+    #     the buy token and refuse thin/unconfirmable liquidity. Makes x402
+    #     load-bearing in the loop; budget-capped by the BNB SDK tracker.
+    if not dry_run:
+        mkt = X402DataClient()
+        verdict = market_gate.check_buy(trade.buy_symbol, mkt)
+        print(f"[x402]   {verdict.detail} (data spend ${mkt.spent_usd():.2f})")
+        if not verdict.ok:
+            print("[x402]   trade BLOCKED by liquidity gate — not signed")
+            state.save(st)
+            return 0
 
     # 5. EXECUTE via TWAK local signing, then confirm before recording.
     result = ex.execute(q)
