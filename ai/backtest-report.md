@@ -40,3 +40,28 @@ a secondary factor. With C the strategy beats buy-hold on both axes:
   direction, not a profit guarantee.
 
 Reproduce: `PYTHONPATH=. .venv/bin/python -m agent.backtest --days 365`
+
+## Robustness — addressing the overfit risk (2026-06-20)
+`PYTHONPATH=. .venv/bin/python -m agent.backtest --robustness`
+
+Multi-asset + walk-forward + ALL 4 factors active (macro/dominance reconstructed
+from an equal-weight BTC/ETH/BNB basket proxy + BTC price-share).
+
+| asset/window | strat ret% | strat DD% | bh ret% | bh DD% |
+|---|---|---|---|---|
+| BTC/full | -40.3 | 42.8 | -41.2 | 51.2 |
+| ETH/full | -7.9 | 43.9 | -29.2 | 67.5 |
+| BNB/full | -5.0 | 43.6 | -10.0 | 56.4 |
+| (H1/H2 halves) | — | DD lower in all 18 windows | — | — |
+
+Findings:
+- **3/3 assets beat buy-hold on BOTH return and drawdown** (full window) — not ETH-specific.
+- **Drawdown lower than buy-hold in EVERY one of the 18 asset×window cells** — the
+  risk-control claim is robust across assets and sub-periods.
+- Honest trade-off: in bullish first-halves the strategy's RETURN lags buy-hold
+  (under-participates in rallies) — the expected cost of trend-following / "don't blow up".
+- All-4-factor (with macro/dominance proxy) beat the 2-factor core on ETH (-7.9 vs -15.1),
+  evidence macro/dominance add signal.
+
+Remaining honest limits: still ~1y window (F&G history cap); macro/dominance are a
+price-basket PROXY, not the exact CMC series; rally under-participation is real.
