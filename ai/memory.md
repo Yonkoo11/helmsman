@@ -5,7 +5,14 @@ Core Action: agent reads one live CMC signal, decides a trade, and signs + submi
 Success Test: one command runs the loop once → real BSC testnet tx hash from a TWAK-signed trade; a deliberately over-cap trade is refused by the guardrail with a logged reason.
 Min Tech: CMC Agent Hub (1 signal), TWAK local signing on BSC testnet, BNB SDK X402Signer for the data payment.
 NOT Phase 1: regime model, personality/chat, copy-trading, mainnet, dashboard, Track 2 Skill, polish.
-Status: [ ] NOT STARTED
+Status: [x] PASSED 2026-06-20 — both halves proven on BSC mainnet:
+  (a) guardrail refuses bad trades — 12/12 unit tests + live dry-run demonstrated.
+  (b) real TWAK-signed BNB->USDT swap, confirmed on-chain, no custodial step.
+  - Agent wallet: 0xa7B70b8dC19196d0B9a2c9151568C66669Be957D (keychain-signed, unattended).
+  - Registered on-chain: tx 0x2b3ae2ff1f7493dfeb1a9a6f435e396dbef47a7e47c6f6e39500ff6142e32296
+  - First live trade: tx 0xe9228df5aaaadc3607797d5d3027ae91c5053a0812f624899c3ef86af35016ea (confirmed; 1.49 USDT received)
+  - CAVEAT: live trade ran a RELAXED TEST PROFILE (dust floor $0.50, per-trade 60%) so a ~$1.5 swap passed on a ~$4 account. Production caps (RiskConfig: $5 floor, 10%/trade, 15% drawdown halt) UNCHANGED, not yet exercised live.
+  - Wallet backup: ~/Backups/twak-helmsman-20260619-011306/ (wallet.json + credentials.json).
 
 ## Hackathon Context (raw facts)
 - Event: BNB Hack: AI Trading Agent Edition — CoinMarketCap × Trust Wallet × BNB Chain

@@ -108,11 +108,13 @@ class Executor:
         if self.dry_run:
             return SwapResult(None, True,
                               f"[dry-run] would swap ${q.amount_usd} {q.sell_symbol}->{q.buy_symbol}")
-        if not self._password:
-            raise TwakError("wallet password required to execute (set in env, never hardcoded)")
-        out = _twak(["swap", q.sell_symbol, q.buy_symbol, "--usd", str(q.amount_usd),
-                     "--chain", self.chain, "--slippage", str(self.slippage_pct),
-                     "--password", self._password])
+        # Sign via TWAK. If no password is passed, TWAK falls back to the OS
+        # keychain (the unattended-signing path) — we never handle the raw key.
+        args = ["swap", q.sell_symbol, q.buy_symbol, "--usd", str(q.amount_usd),
+                "--chain", self.chain, "--slippage", str(self.slippage_pct)]
+        if self._password:
+            args += ["--password", self._password]
+        out = _twak(args)
         tx = out.get("txHash") or out.get("hash") or out.get("transactionHash")
         return SwapResult(tx_hash=tx, dry_run=False,
                           detail=str(out.get("status", out.get("provider", "submitted"))))
