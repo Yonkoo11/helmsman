@@ -1,53 +1,40 @@
 # Helmsman — Progress
 
-## 2026-06-20 — Senior review + real-balance wiring
-### What Changed (Plain English)
-The agent now reads your real wallet balance and remembers its high-water mark
-between runs, so the "stop trading if down 15%" safety brake can actually work
-(before, it could never trigger). In a live read it correctly refused to trade
-the tiny test balance under the real safety rules. Added a check that a trade is
-only counted once the blockchain confirms it.
-### Fixed (review findings 1,2,3)
-- Persistent risk state (agent/state.py): peak equity + daily turnover survive
-  restarts, UTC day rollover, atomic + corruption-safe writes. 7 tests.
-- Real BSC portfolio wired into the loop (agent/portfolio.py) — replaces the
-  synthetic $1,000. Verified against the live wallet ($4.05).
-- Post-trade confirmation (Executor.confirm) before state is recorded.
-### Still open (backlog in ai/senior-review.md): 4 token-address pinning,
-  5 daily-qualify trade, 6 MEV/slippage, 7 single-instance lock, 8 equity x-check.
-
-
-
-## 2026-06-20 — Phase 1 PASSED (live on BSC mainnet)
+## 2026-06-20 — Automode pass: deep integrations + safety backlog (all on-chain verified)
 
 ### What Changed (Plain English)
-The agent did its first real trade. It registered itself in the competition,
-then read a price, ran the trade through its own safety check, and signed and
-sent a real swap on the BNB chain — turning a little BNB into about 1.49 in
-stablecoin. Both transactions are confirmed on the public blockchain. The agent
-signed everything itself; nobody handed over a private key.
+The agent can now run itself safely and unattended. It only trades a checked
+list of real, liquid coins (no look-alike scams), it guarantees at least one
+trade a day (a competition rule), it can't run twice at once, it pays for live
+market data with on-chain micro-payments under a spending cap, and it now has
+its own verifiable on-chain identity. A full automatic cycle ran and made a real
+trade by itself.
 
-### Done + verified live
-- Agent wallet funded (~$4 BNB) and backed up (outside the repo).
-- Registered on-chain: tx 0x2b3ae2ff…32296.
-- First signed trade: tx 0xe9228df5…16ea (confirmed, 1.49 USDT received).
-- Keychain signing works → the agent can sign unattended.
-- Execution adapter fixed to match the real Trust Wallet CLI (USD swaps,
-  priceImpact, keychain fallback) and verified against a live quote.
-- Guardrail engine: 12/12 unit tests; blocks bad trades in the live dry-run.
+### Shipped + verified live (one git save each)
+- **Verified token registry (#4):** trades only CMC-address-verified BSC majors;
+  unresolved/scam tickers refused. Cross-checked USDT/USDC against known addresses.
+- **x402 in the loop (#6/x402):** before a buy, the agent PAYS CMC for live DEX
+  data (BSC, our USDT) under a BNB-SDK budget cap. Real $0.01 payments on-chain.
+- **Daily-qualify net (#5):** guarantees >=1 trade/day via a tiny stable->stable
+  swap when the strategy holds. Forced-path verified with a real on-chain trade.
+- **Autonomous runner + single-instance lock (#2/#7):** one safe cycle per fire,
+  schedulable hourly (launchd plist in deploy/). Live cycle: strategy refused a
+  bad trade (dust floor), daily-qualify executed USDT->USDC on-chain (0x5b9479cd).
+- **ERC-8004 identity (#3):** minted agent NFT #138851 (tx 0x0c0afd33); card
+  embeds all three sponsor integrations; TWAK-signed, BNB-SDK registry config.
 
-### Honest caveats
-- The live trade used a RELAXED TEST PROFILE so a ~$1.5 swap passed on a ~$4
-  account. The real trading-week caps ($5 floor, 10%/trade, 15% drawdown halt)
-  are unchanged and NOT yet exercised live.
-- The main orchestrator still uses a synthetic $1,000 portfolio; only the proof
-  script reads the real balance. Live-portfolio wiring is next.
-- Not yet built: multi-signal regime model (Phase 2), x402 metering, the
-  unattended scheduler/watch loop, real capital sizing for the week.
+### On-chain proofs this pass
+- Daily-qualify trade: 0x5b9479cd80985144056f86c550862f8a743f2bfe3adecbe437a5f7ad5929b671
+- ERC-8004 mint:       0x0c0afd338e37811b19cbd7b939a70f66ce25e12a3af30fbff66f0f1ededa85f3
+- x402 data payment:   USDT 1.4904 -> 1.4804 (earlier), budget-tracked
 
-### Next
-- Wire the real TWAK portfolio into the orchestrator (replace synthetic state).
-- Add the multi-signal regime strategy (funding + F&G + derivatives).
-- Add x402 metering on CMC calls (sponsor depth).
-- Build the unattended loop (≥1 trade/day) under PRODUCTION caps.
-- Decide real trading-week capital before 2026-06-22.
+### Tests: 44 passing (guardrails, state, x402 budget, registry, market gate,
+  daily-qualify, lock, runner, identity).
+
+### Still NOT done (honest)
+- Strategy is single-signal (Fear&Greed). Deeper multi-signal CMC regime (funding,
+  derivatives) not built — limits the "Best Use of CMC" depth.
+- MEV: tight slippage + liquidity overlay, but no private/MEV-protected RPC.
+- Equity not cross-checked vs CMC prices (#8). Demo video + submission writeups pending.
+- Real trading-week capital not decided; account ~$4 (proof scale).
+- PnL is unproven and unprovable until the live week.

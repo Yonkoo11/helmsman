@@ -17,4 +17,10 @@ Reviewed at the bar of a top BNB/DeFi engineer. Findings ordered by live-week bl
 8. **Equity from TWAK USD valuation**, not cross-checked vs CMC prices. OPEN — cross-check in Phase 2.
 
 ## Status
-Fixed this pass: 1, 2, 3 (+ real-balance wiring). Remaining (4–8) are the hardening backlog before the unattended loop trades real capital under production caps.
+Fixed pass 1: 1, 2, 3 (+ real-balance wiring).
+Fixed pass 2 (automode): 4 (token registry), 5 (daily-qualify), 7 (single-instance lock),
+  + x402 wired load-bearing into the loop, + ERC-8004 identity minted (agentId 138851).
+Partially addressed: 6 — tight slippage (--slippage 1) + a live-liquidity overlay,
+  but NO private/MEV-protected RPC yet (sandwich risk on public mempool remains; low EV
+  on the small trade sizes used, but a real-capital week should route through a private RPC).
+Still open: 8 (equity x-check vs CMC prices), deeper multi-signal CMC regime, demo + writeups.
