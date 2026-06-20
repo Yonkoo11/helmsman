@@ -49,6 +49,11 @@ class RiskConfig:
     dust_floor_usd: float = 5.0
     # Max acceptable quoted slippage, in basis points.
     max_slippage_bps: float = 100.0
+    # Native gas token on BSC (NOT a competition-eligible BEP-20 — held only to
+    # pay gas). Trades are refused if the gas balance would fall below the
+    # reserve, so the agent can never strand itself unable to pay for a tx.
+    gas_asset: str = "BNB"
+    min_gas_reserve_usd: float = 1.0
     # Allowlist of tradable symbols (both legs must be in it).
     eligible: frozenset[str] = field(default_factory=load_eligible_tokens)
     stables: frozenset[str] = STABLES

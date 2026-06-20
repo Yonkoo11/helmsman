@@ -17,11 +17,12 @@ def test_registry_present_and_addresses_match_trusted():
         assert tr.verified_address(sym, reg) == addr, f"{sym} address drift"
 
 
-def test_native_and_majors_tradable():
+def test_majors_tradable_native_bnb_not():
     reg = tr.load_registry()
-    assert tr.is_tradable("BNB", reg)   # native
+    assert tr.is_tradable("ETH", reg)     # BEP-20 core, eligible
     assert tr.is_tradable("USDT", reg)
-    assert tr.is_tradable("usdc", reg)  # case-insensitive
+    assert tr.is_tradable("usdc", reg)    # case-insensitive
+    assert not tr.is_tradable("BNB", reg)  # native gas — not competition-tradable
 
 
 def test_unverified_or_unknown_not_tradable():

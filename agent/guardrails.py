@@ -129,6 +129,16 @@ def evaluate(trade: ProposedTrade, pf: Portfolio, cfg: RiskConfig | None = None)
                 f"${max_pos:,.2f} ({cfg.max_position_pct:.0f}% of equity)"
             )
 
+    # 8b. Gas reserve — never trade the native gas balance below the reserve, or
+    #     the agent strands itself unable to pay for any future tx (mid-week DQ).
+    gas_held = pf.held(cfg.gas_asset)
+    gas_after = gas_held - (trade.notional_usd if sell == cfg.gas_asset.upper() else 0.0)
+    if gas_after < cfg.min_gas_reserve_usd:
+        reasons.append(
+            f"gas reserve: {cfg.gas_asset} ${gas_after:,.2f} below "
+            f"${cfg.min_gas_reserve_usd:,.2f} needed to pay for transactions"
+        )
+
     # 9. Circuit breaker — when halted, only de-risking (buy a stable) is allowed.
     if halted and not buy_is_stable:
         reasons.append(

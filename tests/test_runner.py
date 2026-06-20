@@ -61,3 +61,17 @@ def test_no_qualify_before_cutoff_hour(monkeypatch):
     _wire(monkeypatch, st, calls)
     runner.run_cycle(now=dt.datetime(2026, 6, 22, 9, tzinfo=dt.timezone.utc))
     assert not calls, "must not force a qualify trade before the cutoff hour"
+
+
+def test_cycle_survives_strategy_failure(monkeypatch):
+    # A transient CMC/RPC/x402 error must NOT crash the unattended cycle.
+    st = RiskState()
+    monkeypatch.setattr(runner.state, "load", lambda: st)
+    monkeypatch.setattr(runner.state, "save", lambda x: None)
+
+    def boom(st, day, **k):
+        raise RuntimeError("CMC API 500")
+
+    monkeypatch.setattr(runner, "strategy_pass", boom)
+    out = runner.run_cycle(now=dt.datetime(2026, 6, 22, 9, tzinfo=dt.timezone.utc))
+    assert out["trades_total"] == 0  # returned cleanly, no exception

@@ -16,6 +16,20 @@ Reviewed at the bar of a top BNB/DeFi engineer. Findings ordered by live-week bl
 7. **No single-instance lock** for the unattended loop → overlapping runs double-trade. OPEN — lockfile before the loop ships.
 8. **Equity from TWAK USD valuation**, not cross-checked vs CMC prices. OPEN — cross-check in Phase 2.
 
+## Pre-demo review (2026-06-20) — 3 blockers found + fixed
+- **BLOCKER 1 (eligibility):** core asset was BNB (native, NOT on the 149 BEP-20 list)
+  → strategy trades didn't count. FIXED: core = ETH; BNB removed from eligible list +
+  registry; BNB is gas-only now.
+- **BLOCKER 2 (gas):** nothing stopped the agent draining BNB → no gas → mid-week brick.
+  FIXED: hard gas-reserve check in the guardrail (RiskConfig.min_gas_reserve_usd).
+- **BLOCKER 3 (resilience):** the unattended loop had no error handling → a transient
+  CMC/RPC/x402 failure crashed the cycle. FIXED: each phase wrapped; logs + continues.
+- Still open: #4 always-on-machine dependency for daily-qualify (operational — run on an
+  always-on host or cloud); #5 x402 gate is thin (fail-open for majors — honest framing);
+  #6 regime weights not backtested; #7 confirm-timeout reconciliation.
+- **CAPITAL SETUP NOTE for the live week:** fund the wallet with ETH + stables (in-scope),
+  keep only a little BNB for gas. Right now ~$2.56 of $4 is in BNB (gas, not tradable).
+
 ## Status
 Fixed pass 1: 1, 2, 3 (+ real-balance wiring).
 Fixed pass 2 (automode): 4 (token registry), 5 (daily-qualify), 7 (single-instance lock),

@@ -1,6 +1,7 @@
 # BNB Hack eligible BEP-20 tokens (listed on CoinMarketCap). Trades outside this list do NOT count.
-# One symbol per line. '#' comments ignored. BNB (native gas) included explicitly.
-BNB
+# One symbol per line. '#' comments ignored.
+# NOTE: native BNB is NOT here — it is not a BEP-20 and is not competition-eligible;
+# it is held only to pay gas (see RiskConfig.gas_asset / min_gas_reserve_usd).
 ETH
 USDT
 USDC

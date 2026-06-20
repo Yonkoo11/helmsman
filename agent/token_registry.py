@@ -22,12 +22,15 @@ from . import data_cmc  # noqa: F401  (imports load the .env CMC key)
 REGISTRY_PATH = Path(__file__).parent / "data" / "token_registry.json"
 BSC_PLATFORM = "BNB Smart Chain (BEP20)"
 
-# Curated, genuinely-liquid BSC universe. Small on purpose: thin/scam tokens are
-# excluded by construction, which also reduces MEV/sandwich exposure.
+# Curated, genuinely-liquid, COMPETITION-ELIGIBLE BSC universe (all BEP-20, all
+# on the 149-token list). Small on purpose: thin/scam tokens are excluded by
+# construction, which also reduces MEV/sandwich exposure.
+# Native BNB is intentionally ABSENT — it is not BEP-20, not on the eligible
+# list, and is held only to pay gas. Trading it would not count.
 CURATED_UNIVERSE = [
-    "BNB", "ETH", "USDT", "USDC", "USD1", "FDUSD", "CAKE",
+    "ETH", "USDT", "USDC", "USD1", "FDUSD", "CAKE",
 ]
-NATIVE = {"BNB"}  # gas token, no ERC-20 contract
+NATIVE: set[str] = set()  # no native asset is competition-tradable
 
 
 def _resolve_bsc_address(symbol: str, key: str) -> str | None:

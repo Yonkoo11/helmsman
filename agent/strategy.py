@@ -13,7 +13,7 @@ from __future__ import annotations
 from .guardrails import Portfolio, ProposedTrade
 from .regime import RegimeScore
 
-CORE_ASSET = "BNB"   # accumulate target in risk-on
+CORE_ASSET = "ETH"   # accumulate target in risk-on (BEP-20, competition-eligible)
 STABLE = "USDT"      # de-risk destination in risk-off
 
 

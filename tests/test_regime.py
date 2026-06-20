@@ -42,19 +42,19 @@ def test_clamping_bounds_each_factor():
     assert rs.score <= 1.0 and all(abs(v) <= 0.4001 for v in rs.breakdown.values())
 
 
-def _pf(usdt=700.0, bnb=300.0):
-    return Portfolio(equity_usd=usdt + bnb, peak_equity_usd=usdt + bnb,
-                     holdings_usd={"USDT": usdt, "BNB": bnb})
+def _pf(usdt=600.0, eth=300.0, bnb=100.0):
+    return Portfolio(equity_usd=usdt + eth + bnb, peak_equity_usd=usdt + eth + bnb,
+                     holdings_usd={"USDT": usdt, "ETH": eth, "BNB": bnb})
 
 
 def test_strategy_risk_on_buys_core():
     t = decide(RegimeScore(0.5, "risk-on", {}), _pf())
-    assert t and t.sell_symbol == "USDT" and t.buy_symbol == "BNB"
+    assert t and t.sell_symbol == "USDT" and t.buy_symbol == "ETH"
 
 
 def test_strategy_risk_off_sells_to_stable():
     t = decide(RegimeScore(-0.5, "risk-off", {}), _pf())
-    assert t and t.sell_symbol == "BNB" and t.buy_symbol == "USDT"
+    assert t and t.sell_symbol == "ETH" and t.buy_symbol == "USDT"
 
 
 def test_strategy_neutral_holds():

@@ -1,10 +1,4 @@
 {
-  "BNB": {
-    "address": null,
-    "native": true,
-    "verified": true,
-    "source": "cmc:v2/cryptocurrency/info"
-  },
   "ETH": {
     "address": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
     "native": false,

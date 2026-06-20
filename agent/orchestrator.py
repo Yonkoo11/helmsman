@@ -25,7 +25,7 @@ from .regime import Signals
 from .state import RiskState
 from .x402_data import X402DataClient
 
-CORE = "BNB"
+CORE = "ETH"  # asset the strategy accumulates + tracks momentum on (BEP-20, eligible)
 
 
 def _synthetic_signals(fg: float) -> Signals:
@@ -36,8 +36,10 @@ def _synthetic_signals(fg: float) -> Signals:
 
 
 def _synthetic_portfolio() -> Portfolio:
+    # USDT + ETH (tradable) and a BNB gas reserve, for the dry-run pipeline.
     return Portfolio(equity_usd=1000.0, peak_equity_usd=1000.0,
-                     holdings_usd={"USDT": 700.0, "BNB": 300.0}, traded_today_usd=0.0)
+                     holdings_usd={"USDT": 600.0, "ETH": 250.0, "BNB": 150.0},
+                     traded_today_usd=0.0)
 
 
 def attempt_trade(trade: ProposedTrade, pf: Portfolio, st: RiskState, day: str, *,
