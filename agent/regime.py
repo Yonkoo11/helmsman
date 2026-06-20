@@ -31,8 +31,14 @@ class Signals:
 
 @dataclass(frozen=True)
 class RegimeWeights:
-    sentiment: float = 0.40
-    momentum: float = 0.30
+    # Trend-aware default. A backtest over 2025-26 ETH (see agent/backtest.py)
+    # showed a contrarian-heavy mix (sentiment .40) catches falling knives and
+    # underperforms buy-hold; shifting weight to momentum (trend-following)
+    # monotonically cut drawdown. These weights are tuned on ONE downtrend year
+    # — directionally sound (trend-following reduces drawdown) but NOT proven
+    # optimal; expect whipsaw in ranging markets.
+    sentiment: float = 0.20
+    momentum: float = 0.50
     macro: float = 0.20
     dominance: float = 0.10
 

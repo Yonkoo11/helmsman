@@ -22,9 +22,11 @@ def test_greed_with_downtrend_is_risk_off():
 
 
 def test_extreme_fear_in_hard_downtrend_does_not_knife_catch():
-    # The whole point of multi-signal: fear + crashing trend nets to ~neutral.
+    # The whole point of multi-signal: extreme fear during a hard downtrend must
+    # NOT trigger a buy. Under trend-aware weights it goes risk-off (de-risk),
+    # under more contrarian weights neutral — either way, never risk-on.
     rs = score(sig(10, mom7d=-20, mcap=-3, domchg=1.0))
-    assert rs.label == "neutral", rs.log_line()
+    assert rs.label != "risk-on", rs.log_line()
 
 
 def test_flat_signals_neutral():
@@ -39,7 +41,8 @@ def test_breakdown_sums_to_score():
 def test_clamping_bounds_each_factor():
     # Absurd inputs must not blow past the weighted bounds.
     rs = score(sig(0, mom7d=999, mcap=999, domchg=-999))
-    assert rs.score <= 1.0 and all(abs(v) <= 0.4001 for v in rs.breakdown.values())
+    # Each factor is bounded by its weight; the largest weight is momentum (0.50).
+    assert rs.score <= 1.0 and all(abs(v) <= 0.5001 for v in rs.breakdown.values())
 
 
 def _pf(usdt=600.0, eth=300.0, bnb=100.0):
