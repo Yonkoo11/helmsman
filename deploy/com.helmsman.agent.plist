@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Helmsman autonomous trader — runs one safe cycle hourly.
+     Install:  cp deploy/com.helmsman.agent.plist ~/Library/LaunchAgents/
+               launchctl load ~/Library/LaunchAgents/com.helmsman.agent.plist
+     The single-instance lock makes overlapping fires safe.
+     EDIT the two paths below to your absolute project path before installing. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.helmsman.agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/yonko/Projects/helmsman/deploy/run_agent.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <!-- top of every hour -->
+    <dict><key>Minute</key><integer>7</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/yonko/Projects/helmsman/runtime/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/yonko/Projects/helmsman/runtime/launchd.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

@@ -1,15 +1,16 @@
-"""Helmsman orchestrator — one pass of the trade loop.
+"""Helmsman orchestrator — the trade pipeline, shared by every trade.
 
-  read signal  ->  strategy proposes  ->  GUARDRAIL vets  ->  TWAK signs+sends
-                                                           ->  confirm -> record
+  registry gate -> quote -> GUARDRAIL -> x402 liquidity gate -> TWAK sign
+                -> confirm on-chain -> record state
 
-Live mode reads the REAL BSC portfolio and the persisted peak/daily risk state,
-so the drawdown breaker and daily cap operate on continuous history. A trade is
-only recorded after the chain confirms it.
+`attempt_trade` runs one proposed trade through that full pipeline and is reused
+by both the strategy pass and the daily-qualify net (agent/runner.py), so no
+trade can bypass a safety layer. Live mode reads the REAL BSC portfolio and the
+persisted peak/daily risk state; a trade is only recorded once the chain confirms.
 
-  python -m agent.orchestrator --dry-run         # synthetic, no creds, no tx
-  python -m agent.orchestrator                   # live read; signs only if --execute
-  python -m agent.orchestrator --execute         # live, will sign + send
+  python -m agent.orchestrator --dry-run     # synthetic, no creds, no tx
+  python -m agent.orchestrator               # live read; signs only with --execute
+  python -m agent.orchestrator --execute     # live, signs + sends
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from . import data_cmc, market_gate, portfolio, state, strategy, token_registry
 from .data_cmc import Signal
 from .execution import Executor
 from .guardrails import Portfolio, ProposedTrade, evaluate
+from .state import RiskState
 from .x402_data import X402DataClient
 
 
@@ -34,38 +36,19 @@ def _synthetic_portfolio() -> Portfolio:
                      holdings_usd={"USDT": 700.0, "BNB": 300.0}, traded_today_usd=0.0)
 
 
-def run_once(dry_run: bool, execute: bool, fg_value: float | None) -> int:
-    day = state.today_utc()
-    st = state.load()
+def attempt_trade(trade: ProposedTrade, pf: Portfolio, st: RiskState, day: str, *,
+                  dry_run: bool, execute: bool, label: str = "trade") -> bool:
+    """Run one trade through the full pipeline. Returns True iff confirmed+recorded.
 
-    # 1. READ a signal.
-    signal = _synthetic_signal(20.0 if fg_value is None else fg_value) if dry_run else data_cmc.fear_greed()
-    print(f"[read]   signal {signal.name}={signal.value:.0f} ({signal.classification})")
-
-    # 2. Load portfolio — synthetic in dry-run, real BSC + persisted state when live.
-    pf = _synthetic_portfolio() if dry_run else portfolio.build_live_portfolio(st, day)
-    print(f"[state]  equity=${pf.equity_usd:,.2f} peak=${pf.peak_equity_usd:,.2f} "
-          f"drawdown={pf.drawdown_pct():.1f}% tradedToday=${pf.traded_today_usd:,.2f} "
-          f"holdings={ {k: round(v,2) for k,v in pf.holdings_usd.items()} }")
-
-    # 3. STRATEGY proposes.
-    trade = strategy.decide(signal, pf)
-    if trade is None:
-        print("[decide] hold — no trade proposed this pass")
-        if not dry_run:
-            state.save(st)  # persist the updated peak high-water mark
-        return 0
-    print(f"[decide] propose swap ${trade.notional_usd:,.2f} {trade.sell_symbol}->{trade.buy_symbol}")
-
-    # 3b. Registry gate (live): both legs must be address-verified (anti scam-ticker).
+    Does NOT persist state — the caller saves once per cycle.
+    """
+    # Registry gate (live): both legs must be address-verified (anti scam-ticker).
     if not dry_run:
         for leg in (trade.sell_symbol, trade.buy_symbol):
             if not token_registry.is_tradable(leg):
-                print(f"[registry] {leg} not address-verified — trade BLOCKED")
-                state.save(st)
-                return 0
+                print(f"[registry] {leg} not address-verified — {label} BLOCKED")
+                return False
 
-    # 4. Quote, then GUARDRAIL vets (final say).
     ex = Executor(chain="bsc", dry_run=dry_run,
                   password=None if dry_run else os.getenv("TWAK_WALLET_PASSWORD"))
     q = ex.quote(trade.sell_symbol, trade.buy_symbol, trade.notional_usd)
@@ -73,43 +56,61 @@ def run_once(dry_run: bool, execute: bool, fg_value: float | None) -> int:
                                       trade.notional_usd, q.slippage_bps), pf)
     print(f"[guard]  {decision.log_line()}")
     if not decision.allowed:
-        print("[guard]  trade BLOCKED by guardrails — not signed")
-        if not dry_run:
-            state.save(st)
-        return 0
+        print(f"[guard]  {label} BLOCKED by guardrails — not signed")
+        return False
 
     if not (execute or dry_run):
-        print("[stop]   guardrail PASSED; x402 liquidity gate + signing run at --execute")
-        state.save(st)
-        return 0
+        print("[stop]   guardrail PASSED; x402 gate + signing run at --execute")
+        return False
 
-    # 4b. x402 PAID market gate (live execute): pay CMC for live DEX liquidity on
-    #     the buy token and refuse thin/unconfirmable liquidity. Makes x402
-    #     load-bearing in the loop; budget-capped by the BNB SDK tracker.
+    # x402 PAID market gate (live): pay CMC for live DEX liquidity on the buy token.
     if not dry_run:
         mkt = X402DataClient()
         verdict = market_gate.check_buy(trade.buy_symbol, mkt)
         print(f"[x402]   {verdict.detail} (data spend ${mkt.spent_usd():.2f})")
         if not verdict.ok:
-            print("[x402]   trade BLOCKED by liquidity gate — not signed")
-            state.save(st)
-            return 0
+            print(f"[x402]   {label} BLOCKED by liquidity gate — not signed")
+            return False
 
-    # 5. EXECUTE via TWAK local signing, then confirm before recording.
     result = ex.execute(q)
     if result.dry_run:
         print(f"[exec]   {result.detail}")
-        return 0
+        return False
     print(f"[exec]   submitted tx={result.tx_hash}")
     if result.tx_hash and ex.confirm(result.tx_hash):
         st.record_trade(trade.notional_usd, day)
-        state.save(st)
         print(f"[confirm] on-chain confirmed; recorded. trades_total={st.trades_total}")
         print(f"[proof]  https://bscscan.com/tx/{result.tx_hash}")
-    else:
-        state.save(st)  # peak persists; trade NOT recorded (unconfirmed/failed)
-        print("[confirm] NOT confirmed — trade not recorded (state safe)")
-        return 1
+        return True
+    print("[confirm] NOT confirmed — trade not recorded (state safe)")
+    return False
+
+
+def strategy_pass(st: RiskState, day: str, *, dry_run: bool, execute: bool,
+                  fg_value: float | None = None) -> bool:
+    """One regime-driven decision + (maybe) trade. Returns True iff it traded."""
+    signal = _synthetic_signal(20.0 if fg_value is None else fg_value) if dry_run else data_cmc.fear_greed()
+    print(f"[read]   signal {signal.name}={signal.value:.0f} ({signal.classification})")
+
+    pf = _synthetic_portfolio() if dry_run else portfolio.build_live_portfolio(st, day)
+    print(f"[state]  equity=${pf.equity_usd:,.2f} peak=${pf.peak_equity_usd:,.2f} "
+          f"drawdown={pf.drawdown_pct():.1f}% tradedToday=${pf.traded_today_usd:,.2f} "
+          f"holdings={ {k: round(v,2) for k,v in pf.holdings_usd.items()} }")
+
+    trade = strategy.decide(signal, pf)
+    if trade is None:
+        print("[decide] hold — no trade proposed this pass")
+        return False
+    print(f"[decide] propose swap ${trade.notional_usd:,.2f} {trade.sell_symbol}->{trade.buy_symbol}")
+    return attempt_trade(trade, pf, st, day, dry_run=dry_run, execute=execute)
+
+
+def run_once(dry_run: bool, execute: bool, fg_value: float | None) -> int:
+    day = state.today_utc()
+    st = state.load()
+    strategy_pass(st, day, dry_run=dry_run, execute=execute, fg_value=fg_value)
+    if not dry_run:
+        state.save(st)
     return 0
 
 

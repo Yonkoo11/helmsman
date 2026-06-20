@@ -44,11 +44,21 @@ def test_thin_liquidity_blocked():
     assert not v.ok and "below floor" in v.detail
 
 
-def test_address_mismatch_fails_closed():
-    # Fuzzy search returned a different token — must NOT be trusted.
+def test_unconfirmed_liquidity_proceeds_for_verified_token():
+    # Fuzzy search returned a different token (didn't surface CAKE). The registry
+    # already verified CAKE's address, so the overlay proceeds rather than
+    # false-blocking a real major.
     c = FakeClient(_dex("0xdeadbeef00000000000000000000000000000000", 9_000_000))
     v = check_buy("CAKE", c, REG, min_liq_usd=250_000)
-    assert not v.ok and "not found" in v.detail
+    assert v.ok and "unconfirmed" in v.detail
+
+
+def test_positively_thin_token_still_blocked():
+    # When x402 DOES surface the token and liquidity is thin, block it.
+    addr = REG["CAKE"]["address"]
+    c = FakeClient(_dex(addr, 500))
+    v = check_buy("CAKE", c, REG, min_liq_usd=250_000)
+    assert not v.ok and "below floor" in v.detail
 
 
 def test_unverified_symbol_blocked_without_payment():

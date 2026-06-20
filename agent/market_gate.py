@@ -44,8 +44,11 @@ def check_buy(symbol: str, client: X402DataClient,
     data = client.request(f"dex/search?query={addr}")
     match = _match_token(data, addr)
     if match is None:
-        # Live data couldn't confirm the exact contract — fail CLOSED for safety.
-        return MarketVerdict(False, f"x402: {symbol} ({addr[:10]}…) not found in live DEX data")
+        # `dex/search` is a fuzzy keyword search and often omits the exact token.
+        # The REGISTRY is the hard scam gate (CMC-authoritative address); this
+        # x402 overlay only *blocks positively-detected thin liquidity*, so when
+        # it can't see a registry-verified token we PROCEED (don't false-block).
+        return MarketVerdict(True, f"x402: liquidity unconfirmed for {symbol} (registry-verified) — proceeding")
 
     liq = float(match.get("liq") or 0.0)
     if liq < min_liq_usd:
