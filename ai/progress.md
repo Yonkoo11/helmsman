@@ -38,3 +38,17 @@ trade by itself.
 - Equity not cross-checked vs CMC prices (#8). Demo video + submission writeups pending.
 - Real trading-week capital not decided; account ~$4 (proof scale).
 - PnL is unproven and unprovable until the live week.
+
+## 2026-06-20 — Deeper CMC regime (multi-signal)
+### What Changed (Plain English)
+The agent now reads three CoinMarketCap data streams (market mood, price trend,
+and the whole-market backdrop) instead of just mood, and blends them into one
+risk score. On live data it correctly held back from buying into fear because the
+7-day trend was still down — a smarter call than mood alone.
+### Built + verified
+- regime.py: 4-factor score (sentiment contrarian + momentum trend + macro mcap +
+  BTC dominance). Knife-catch prevention tested. data_cmc: momentum() + global_macro()
+  + fetch_signals() (3 live endpoints). strategy maps regime->action.
+- Live read: FG=20 but mom7d=-3.9% -> regime neutral -> HOLD (single-signal would buy).
+- Honest: funding rates / derivatives positioning are NOT on our CMC tier (403) — omitted, not faked.
+- 53 tests pass.

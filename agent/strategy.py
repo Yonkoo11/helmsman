@@ -1,37 +1,32 @@
-"""Strategy — turns CMC signals into a proposed trade.
+"""Strategy — turns the multi-signal regime into a proposed trade.
 
-Phase 1 keeps this intentionally simple: a Fear & Greed regime rule. Extreme
-fear accumulates a core asset; extreme greed de-risks into a stable; the middle
-holds. Phase 2 blends funding rates + derivatives positioning into the regime.
+The regime engine (agent/regime.py) blends sentiment + momentum + macro into a
+risk-appetite score. This module maps that score to an action:
+  risk-on  -> accumulate the core asset (buy with a stable)
+  risk-off -> de-risk into a stable
+  neutral  -> hold
 
 The strategy only PROPOSES — the guardrail engine has the final say.
 """
 from __future__ import annotations
 
-from .data_cmc import Signal
 from .guardrails import Portfolio, ProposedTrade
+from .regime import RegimeScore
 
-CORE_ASSET = "BNB"   # accumulate target on fear
-STABLE = "USDT"      # de-risk destination on greed
+CORE_ASSET = "BNB"   # accumulate target in risk-on
+STABLE = "USDT"      # de-risk destination in risk-off
 
 
-def decide(signal: Signal, pf: Portfolio, trade_pct: float = 8.0) -> ProposedTrade | None:
-    """Propose one trade from the signal + current portfolio, or None to hold."""
+def decide(regime: RegimeScore, pf: Portfolio, trade_pct: float = 8.0) -> ProposedTrade | None:
+    """Propose one trade from the regime + current portfolio, or None to hold."""
     notional = trade_pct / 100.0 * pf.equity_usd
 
-    # Extreme fear -> accumulate the core asset (buy the dip).
-    if signal.value <= 25:
+    if regime.label == "risk-on":
         size = min(notional, pf.held(STABLE))
-        if size <= 0:
-            return None
-        return ProposedTrade(STABLE, CORE_ASSET, size)
+        return ProposedTrade(STABLE, CORE_ASSET, size) if size > 0 else None
 
-    # Extreme greed -> take risk off into a stable.
-    if signal.value >= 75:
+    if regime.label == "risk-off":
         size = min(notional, pf.held(CORE_ASSET))
-        if size <= 0:
-            return None
-        return ProposedTrade(CORE_ASSET, STABLE, size)
+        return ProposedTrade(CORE_ASSET, STABLE, size) if size > 0 else None
 
-    # Neutral -> hold.
-    return None
+    return None  # neutral -> hold

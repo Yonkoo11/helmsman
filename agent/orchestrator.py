@@ -18,17 +18,21 @@ import argparse
 import os
 import sys
 
-from . import data_cmc, market_gate, portfolio, state, strategy, token_registry
-from .data_cmc import Signal
+from . import data_cmc, market_gate, portfolio, regime, state, strategy, token_registry
 from .execution import Executor
 from .guardrails import Portfolio, ProposedTrade, evaluate
+from .regime import Signals
 from .state import RiskState
 from .x402_data import X402DataClient
 
+CORE = "BNB"
 
-def _synthetic_signal(value: float) -> Signal:
-    cls = "Extreme Fear" if value <= 25 else "Extreme Greed" if value >= 75 else "Neutral"
-    return Signal(name="fear_greed", value=value, classification=cls)
+
+def _synthetic_signals(fg: float) -> Signals:
+    """Dry-run signals: regime driven by F&G, momentum/macro neutral."""
+    cls = "Extreme Fear" if fg <= 25 else "Extreme Greed" if fg >= 75 else "Neutral"
+    return Signals(fear_greed=fg, momentum_7d_pct=0.0, momentum_24h_pct=0.0,
+                   macro_mcap_24h_pct=0.0, btc_dom_24h_change=0.0, classification=cls)
 
 
 def _synthetic_portfolio() -> Portfolio:
@@ -89,15 +93,19 @@ def attempt_trade(trade: ProposedTrade, pf: Portfolio, st: RiskState, day: str, 
 def strategy_pass(st: RiskState, day: str, *, dry_run: bool, execute: bool,
                   fg_value: float | None = None) -> bool:
     """One regime-driven decision + (maybe) trade. Returns True iff it traded."""
-    signal = _synthetic_signal(20.0 if fg_value is None else fg_value) if dry_run else data_cmc.fear_greed()
-    print(f"[read]   signal {signal.name}={signal.value:.0f} ({signal.classification})")
+    signals = _synthetic_signals(20.0 if fg_value is None else fg_value) if dry_run else data_cmc.fetch_signals(CORE)
+    rs = regime.score(signals)
+    print(f"[signal] FG={signals.fear_greed:.0f}({signals.classification}) "
+          f"mom7d={signals.momentum_7d_pct:+.1f}% mcap24h={signals.macro_mcap_24h_pct:+.2f}% "
+          f"btcDomΔ={signals.btc_dom_24h_change:+.2f}")
+    print(f"[regime] {rs.log_line()}")
 
     pf = _synthetic_portfolio() if dry_run else portfolio.build_live_portfolio(st, day)
     print(f"[state]  equity=${pf.equity_usd:,.2f} peak=${pf.peak_equity_usd:,.2f} "
           f"drawdown={pf.drawdown_pct():.1f}% tradedToday=${pf.traded_today_usd:,.2f} "
           f"holdings={ {k: round(v,2) for k,v in pf.holdings_usd.items()} }")
 
-    trade = strategy.decide(signal, pf)
+    trade = strategy.decide(rs, pf)
     if trade is None:
         print("[decide] hold — no trade proposed this pass")
         return False

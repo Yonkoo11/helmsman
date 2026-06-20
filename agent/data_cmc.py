@@ -64,8 +64,7 @@ def fear_greed() -> Signal:
     )
 
 
-def quote_usd(symbol: str) -> float:
-    """Spot USD price for a symbol via CMC listings."""
+def _quote(symbol: str) -> dict:
     r = requests.get(
         f"{CMC_BASE}/v2/cryptocurrency/quotes/latest",
         headers={"X-CMC_PRO_API_KEY": _key(), "Accept": "application/json"},
@@ -75,4 +74,47 @@ def quote_usd(symbol: str) -> float:
     r.raise_for_status()
     payload = r.json()["data"][symbol.upper()]
     entry = payload[0] if isinstance(payload, list) else payload
-    return float(entry["quote"]["USD"]["price"])
+    return entry["quote"]["USD"]
+
+
+def quote_usd(symbol: str) -> float:
+    """Spot USD price for a symbol via CMC listings."""
+    return float(_quote(symbol)["price"])
+
+
+def momentum(symbol: str) -> tuple[float, float, float]:
+    """(24h %change, 7d %change, 24h volume %change) for a symbol — the trend stream."""
+    u = _quote(symbol)
+    return (float(u.get("percent_change_24h") or 0.0),
+            float(u.get("percent_change_7d") or 0.0),
+            float(u.get("volume_change_24h") or 0.0))
+
+
+def global_macro() -> tuple[float, float]:
+    """(total market-cap 24h %change, BTC dominance 24h pp change) — the macro stream."""
+    r = requests.get(
+        f"{CMC_BASE}/v1/global-metrics/quotes/latest",
+        headers={"X-CMC_PRO_API_KEY": _key(), "Accept": "application/json"},
+        timeout=15,
+    )
+    r.raise_for_status()
+    d = r.json()["data"]
+    mcap_24h = float(d["quote"]["USD"].get("total_market_cap_yesterday_percentage_change") or 0.0)
+    btc_dom_chg = float(d.get("btc_dominance_24h_percentage_change") or 0.0)
+    return (mcap_24h, btc_dom_chg)
+
+
+def fetch_signals(core_symbol: str = "BNB"):
+    """Assemble the multi-stream regime snapshot from 3 live CMC endpoints."""
+    from .regime import Signals
+    fg = fear_greed()
+    mom_24h, mom_7d, _vol = momentum(core_symbol)
+    mcap_24h, btc_dom_chg = global_macro()
+    return Signals(
+        fear_greed=fg.value,
+        momentum_7d_pct=mom_7d,
+        momentum_24h_pct=mom_24h,
+        macro_mcap_24h_pct=mcap_24h,
+        btc_dom_24h_change=btc_dom_chg,
+        classification=fg.classification,
+    )
