@@ -21,7 +21,10 @@ from .lock import AlreadyRunning, single_instance
 from .orchestrator import attempt_trade, reconcile_pending, strategy_pass
 from .x402_data import X402BudgetExhausted
 
-QUALIFY_AFTER_UTC_HOUR = 20  # strategy owns the day; force a trade only late
+# Force the daily-qualify by MIDDAY UTC, not late evening: if the host sleeps in
+# the evening the late cutoff could miss the trade entirely (DQ). Noon gives the
+# strategy the morning to trade organically, then a wide afternoon catch window.
+QUALIFY_AFTER_UTC_HOUR = 12
 
 
 def should_qualify(*, ensure_daily: bool, has_traded_today: bool,

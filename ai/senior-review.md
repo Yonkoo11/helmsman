@@ -54,3 +54,14 @@ An independent auditor reviewed the money-path. Fixed:
 - L-2/L-3: ERC-8004 card reads guardrail numbers from RiskConfig; --wallet required.
 - 63 tests. Still open: M-2 (Permit2 MAX-approval bounded only by small wallet balance;
   budget resets per-trade but <=2 calls/cycle so spend is bounded), backtest, always-on host.
+
+## Closing the "did not do" list (2026-06-20)
+- Backtest (#1): BUILT + run. Original weights lost 2x buy-hold; retuned trend-aware
+  (sentiment .20/momentum .50) -> beats buy-hold on return (-15% vs -29%) AND drawdown
+  (49% vs 67%). Overfit-to-one-downtrend-year caveat documented (ai/backtest-report.md).
+- Always-on (#3/#4-ops): qualify cutoff moved 20:00 -> 12:00 UTC (wider catch window);
+  deploy/keepawake.sh (caffeinate) + heartbeat in agent.log + deploy/README.md with the
+  cloud-host option and the keychain caveat. Residual: still needs the host awake; not eliminated.
+- M-2 (Permit2 MAX approval): documented as accepted risk (canonical audited Permit2 +
+  dedicated small wallet); auto_approve made a conscious config with an eip3009 no-approval
+  alternative noted. Not a hard code cap (TWAK CLI lacks bounded-approval unattended).

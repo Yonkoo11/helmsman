@@ -40,7 +40,14 @@ class X402DataClient:
     per_call_atomic: int = ONE_CENT
     session_cap_atomic: int = 20 * ONE_CENT      # $0.20 / session (≈20 requests)
     prefer_method: str = "permit2-exact"
-    auto_approve: bool = True                     # one-time approve(Permit2) if needed
+    # auto_approve drives a one-time approve(Permit2, MAX) on the first paid call.
+    # Permit2 is Uniswap's canonical, audited contract, and this is a DEDICATED
+    # agent wallet funded with only trading capital, so the MAX-allowance blast
+    # radius is bounded by that small balance (accepted risk, M-2). To avoid the
+    # MAX approval entirely, set auto_approve=False and either pre-approve a
+    # bounded Permit2 allowance once, or fund the gasless eip3009 payment token
+    # (United Stables) and set prefer_method="eip3009" (no approval needed).
+    auto_approve: bool = True
 
     def __post_init__(self) -> None:
         self._budget = SessionBudgetTracker(caps={self.asset: self.session_cap_atomic})
