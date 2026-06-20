@@ -1,0 +1,23 @@
+{
+  "name": "Helmsman",
+  "type": "autonomous-trading-agent",
+  "version": "0.1.0",
+  "description": "Self-custody autonomous BSC trading agent with hard risk guardrails. Reads CoinMarketCap signals, signs every trade locally via Trust Wallet Agent Kit, pays for data via x402 (BNB-SDK budget-capped).",
+  "wallet": "0xa7B70b8dC19196d0B9a2c9151568C66669Be957D",
+  "chain": "bsc",
+  "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "integrations": {
+    "execution": "Trust Wallet Agent Kit \u2014 local self-custody signing",
+    "data": "CoinMarketCap Agent Hub \u2014 x402 paid + REST",
+    "sdk": "BNB Agent SDK \u2014 x402 SessionBudgetTracker + ERC-8004 identity"
+  },
+  "guardrails": {
+    "drawdown_halt_pct": 15,
+    "per_trade_cap_pct": 10,
+    "daily_turnover_cap_pct": 40,
+    "max_position_pct": 35,
+    "universe": "CMC-address-verified curated BSC majors"
+  },
+  "erc8004_agent_id": "138851",
+  "mint_tx": "0x0c0afd338e37811b19cbd7b939a70f66ce25e12a3af30fbff66f0f1ededa85f3"
+}
