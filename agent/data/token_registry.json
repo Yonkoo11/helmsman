@@ -1,0 +1,44 @@
+{
+  "BNB": {
+    "address": null,
+    "native": true,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "ETH": {
+    "address": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "USDT": {
+    "address": "0x55d398326f99059ff775485246999027b3197955",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "USDC": {
+    "address": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "USD1": {
+    "address": "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "FDUSD": {
+    "address": "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  },
+  "CAKE": {
+    "address": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+    "native": false,
+    "verified": true,
+    "source": "cmc:v2/cryptocurrency/info"
+  }
+}
