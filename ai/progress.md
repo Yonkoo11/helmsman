@@ -32,8 +32,8 @@ trade by itself.
   daily-qualify, lock, runner, identity).
 
 ### Still NOT done (honest)
-- Strategy is single-signal (Fear&Greed). Deeper multi-signal CMC regime (funding,
-  derivatives) not built — limits the "Best Use of CMC" depth.
+- CMC regime now 3-stream multi-signal (DONE below). Funding/derivatives positioning
+  still absent — not on our CMC tier (would need a higher tier).
 - MEV: tight slippage + liquidity overlay, but no private/MEV-protected RPC.
 - Equity not cross-checked vs CMC prices (#8). Demo video + submission writeups pending.
 - Real trading-week capital not decided; account ~$4 (proof scale).
