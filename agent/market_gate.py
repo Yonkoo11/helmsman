@@ -11,10 +11,15 @@ verified contract address before trusting any field.
 """
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
+from urllib.parse import quote
 
 from . import token_registry
 from .x402_data import X402DataClient
+
+_ADDR_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
 
 @dataclass(frozen=True)
@@ -38,10 +43,13 @@ def check_buy(symbol: str, client: X402DataClient,
         return MarketVerdict(False, f"{symbol} not address-verified in registry")
 
     addr = token_registry.verified_address(symbol, reg)
-    if addr is None:  # native BNB — deepest liquidity on BSC, no contract to probe
-        return MarketVerdict(True, "native BNB — liquidity check not applicable")
+    if addr is None:  # native asset — no contract to probe
+        return MarketVerdict(True, "native asset — liquidity check not applicable")
+    # Defend the request URL: only ever query a clean 0x-address (M-1).
+    if not _ADDR_RE.match(addr):
+        return MarketVerdict(False, f"{symbol} registry address malformed: {addr!r}")
 
-    data = client.request(f"dex/search?query={addr}")
+    data = client.request(f"dex/search?query={quote(addr, safe='')}")
     match = _match_token(data, addr)
     if match is None:
         # `dex/search` is a fuzzy keyword search and often omits the exact token.
@@ -50,7 +58,14 @@ def check_buy(symbol: str, client: X402DataClient,
         # it can't see a registry-verified token we PROCEED (don't false-block).
         return MarketVerdict(True, f"x402: liquidity unconfirmed for {symbol} (registry-verified) — proceeding")
 
-    liq = float(match.get("liq") or 0.0)
+    # Sanity-bound the reported liquidity: a non-finite / negative / absurd value
+    # is untrustworthy data, not a pass (C-2).
+    try:
+        liq = float(match.get("liq") or 0.0)
+    except (TypeError, ValueError):
+        return MarketVerdict(False, f"x402 liquidity for {symbol} unparseable — blocked")
+    if not math.isfinite(liq) or liq < 0 or liq > 1e15:
+        return MarketVerdict(False, f"x402 liquidity for {symbol} implausible ({liq}) — blocked")
     if liq < min_liq_usd:
         return MarketVerdict(False, f"x402 liquidity ${liq:,.0f} below floor ${min_liq_usd:,.0f}", liq)
     return MarketVerdict(True, f"x402 liquidity ${liq:,.0f} OK", liq)

@@ -6,7 +6,9 @@ meaningless.
 """
 from __future__ import annotations
 
-from agent.state import RiskState, load, save
+import pytest
+
+from agent.state import CorruptStateError, RiskState, load, save
 
 
 def test_peak_equity_is_monotonic():
@@ -54,10 +56,13 @@ def test_roundtrip_persistence(tmp_path):
     assert loaded == s
 
 
-def test_corrupt_state_file_degrades_safely(tmp_path):
+def test_corrupt_state_file_halts_not_resets(tmp_path):
+    # A corrupt EXISTING file must raise, never silently reset peak->0 (which
+    # would disable the drawdown breaker). (H-3)
     p = tmp_path / "state.json"
     p.write_text("{ not valid json", encoding="utf-8")
-    assert load(p) == RiskState()  # never crash the agent on a bad file
+    with pytest.raises(CorruptStateError):
+        load(p)
 
 
 def test_missing_state_file_is_fresh(tmp_path):

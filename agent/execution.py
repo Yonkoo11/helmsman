@@ -69,26 +69,33 @@ def _twak(args: list[str], timeout: int = 120) -> dict:
     return _extract_json(proc.stdout)
 
 
+# Slippage sentinel: a quote whose priceImpact can't be parsed is treated as
+# unbounded slippage so the guardrail's slippage bound blocks it (M-4).
+BLOCK_SLIPPAGE_BPS = 1_000_000.0
+
+
 def _price_impact_bps(raw: object) -> float:
-    """Convert a priceImpact percentage (e.g. '0.5') to basis points."""
+    """priceImpact % -> bps. Unparseable / NaN / negative => BLOCK sentinel."""
     try:
-        return float(str(raw)) * 100.0
+        v = float(str(raw))
     except (TypeError, ValueError):
-        return 0.0
+        return BLOCK_SLIPPAGE_BPS
+    if v != v or v < 0:  # NaN or negative is not a trustworthy quote
+        return BLOCK_SLIPPAGE_BPS
+    return v * 100.0
 
 
 class Executor:
     """Wraps TWAK for quotes + swaps. Set dry_run=True to stub all network I/O.
 
-    password: the wallet password TWAK requires to sign an execution. Read from
-    the environment by the caller (never hardcoded). None => dry-run / quote only.
+    Signing always uses the OS keychain (or the TWAK_WALLET_PASSWORD env that
+    the subprocess inherits) — the password is NEVER placed on argv, so it can't
+    leak via the process table or an error message (H-2).
     """
 
-    def __init__(self, chain: str = "bsc", dry_run: bool = False,
-                 password: str | None = None, slippage_pct: float = 1.0):
+    def __init__(self, chain: str = "bsc", dry_run: bool = False, slippage_pct: float = 1.0):
         self.chain = chain
         self.dry_run = dry_run
-        self._password = password
         self.slippage_pct = slippage_pct
 
     def quote(self, sell: str, buy: str, amount_usd: float) -> SwapQuote:
@@ -97,9 +104,13 @@ class Executor:
                              output="(dry-run)", provider="dry-run")
         out = _twak(["swap", sell, buy, "--usd", str(amount_usd),
                      "--chain", self.chain, "--quote-only"])
+        # A quote missing its core fields is untrustworthy -> force a block.
+        if not out.get("output") or not out.get("minReceived") or "priceImpact" not in out:
+            return SwapQuote(sell, buy, amount_usd, slippage_bps=BLOCK_SLIPPAGE_BPS,
+                             output="", provider=str(out.get("provider", "")))
         return SwapQuote(
             sell_symbol=sell, buy_symbol=buy, amount_usd=amount_usd,
-            slippage_bps=_price_impact_bps(out.get("priceImpact", 0)),
+            slippage_bps=_price_impact_bps(out.get("priceImpact")),
             output=str(out.get("output", "")),
             min_received=str(out.get("minReceived", "")),
             provider=str(out.get("provider", "")),
@@ -109,28 +120,29 @@ class Executor:
         if self.dry_run:
             return SwapResult(None, True,
                               f"[dry-run] would swap ${q.amount_usd} {q.sell_symbol}->{q.buy_symbol}")
-        # Sign via TWAK. If no password is passed, TWAK falls back to the OS
-        # keychain (the unattended-signing path) — we never handle the raw key.
-        args = ["swap", q.sell_symbol, q.buy_symbol, "--usd", str(q.amount_usd),
-                "--chain", self.chain, "--slippage", str(self.slippage_pct)]
-        if self._password:
-            args += ["--password", self._password]
-        out = _twak(args)
+        # Signing via TWAK keychain/env — no password on argv.
+        out = _twak(["swap", q.sell_symbol, q.buy_symbol, "--usd", str(q.amount_usd),
+                     "--chain", self.chain, "--slippage", str(self.slippage_pct)])
         tx = out.get("txHash") or out.get("hash") or out.get("transactionHash")
         return SwapResult(tx_hash=tx, dry_run=False,
                           detail=str(out.get("status", out.get("provider", "submitted"))))
 
-    def confirm(self, tx_hash: str, tries: int = 12, delay_s: float = 3.0) -> bool:
-        """Poll a tx until on-chain confirmed. Returns True only on confirmed+success.
+    def confirm(self, tx_hash: str, tries: int = 12, delay_s: float = 3.0) -> str:
+        """Poll a tx. Returns 'confirmed' | 'failed' | 'pending'.
 
-        Used to gate state recording: a trade is only counted once the chain
-        confirms it, so a submit-then-crash can't corrupt turnover/peak state.
+        'pending' (timeout) is NOT 'failed' — the caller must persist the hash and
+        reconcile it next cycle so a slow-but-successful swap isn't re-traded (H-1).
+        Transient poll errors don't abort the wait (L-1).
         """
         for _ in range(tries):
-            out = _twak(["tx", tx_hash, "--chain", self.chain])
+            try:
+                out = _twak(["tx", tx_hash, "--chain", self.chain])
+            except TwakError:
+                time.sleep(delay_s)
+                continue
             if out.get("failed"):
-                return False
+                return "failed"
             if out.get("confirmed"):
-                return True
+                return "confirmed"
             time.sleep(delay_s)
-        return False
+        return "pending"

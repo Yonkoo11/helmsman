@@ -34,6 +34,8 @@ def erc8004_registry() -> str | None:
 
 def agent_card(wallet: str, registry: str | None) -> dict:
     """The ERC-8004 agent card describing this autonomous trader."""
+    from .config import RiskConfig
+    cfg = RiskConfig()
     return {
         "name": AGENT_NAME,
         "type": "autonomous-trading-agent",
@@ -52,8 +54,10 @@ def agent_card(wallet: str, registry: str | None) -> dict:
             "sdk": "BNB Agent SDK — x402 SessionBudgetTracker + ERC-8004 identity",
         },
         "guardrails": {
-            "drawdown_halt_pct": 15, "per_trade_cap_pct": 10,
-            "daily_turnover_cap_pct": 40, "max_position_pct": 35,
+            "drawdown_halt_pct": cfg.max_drawdown_halt_pct,
+            "per_trade_cap_pct": cfg.per_trade_cap_pct,
+            "daily_turnover_cap_pct": cfg.daily_turnover_cap_pct,
+            "max_position_pct": cfg.max_position_pct,
             "universe": "CMC-address-verified curated BSC majors",
         },
     }
@@ -86,9 +90,11 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--register", action="store_true")
     ap.add_argument("--show", metavar="AGENT_ID")
-    ap.add_argument("--wallet", default="0xa7B70b8dC19196d0B9a2c9151568C66669Be957D")
+    ap.add_argument("--wallet", help="agent wallet address (required for --register)")
     a = ap.parse_args()
     if a.register:
+        if not a.wallet:
+            ap.error("--wallet is required for --register")
         print(json.dumps(register(a.wallet), indent=2))
     elif a.show:
         print(json.dumps(show(a.show), indent=2))

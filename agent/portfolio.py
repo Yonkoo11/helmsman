@@ -23,13 +23,24 @@ def read_bsc_holdings() -> dict[str, float]:
         raise RuntimeError((out.stderr or out.stdout or "twak portfolio failed").strip()[:200])
     start = out.stdout.find("[")
     arr = json.loads(out.stdout[start:]) if start != -1 else []
+    import math
     holdings: dict[str, float] = {}
     for x in arr:
         if x.get("chain") != "bsc":
             continue
-        usd = float(x.get("usdValue") or 0)
+        try:
+            usd = float(x.get("usdValue") or 0)
+        except (TypeError, ValueError) as e:
+            # A balance whose USD value won't parse must not silently become 0 and
+            # then lift the percentage caps elsewhere — reject the read (M-3).
+            raise RuntimeError(f"unparseable usdValue for {x.get('symbol')}: {e}") from e
+        # Reject non-finite or absurd values (a poisoned/mis-scaled balance would
+        # inflate equity and therefore every percent-of-equity cap).
+        if not math.isfinite(usd) or usd < 0 or usd > 1e12:
+            raise RuntimeError(f"implausible usdValue {usd} for {x.get('symbol')}")
         if usd > 0:
-            holdings[str(x["symbol"]).upper()] = holdings.get(str(x["symbol"]).upper(), 0.0) + usd
+            sym = str(x["symbol"]).upper()
+            holdings[sym] = holdings.get(sym, 0.0) + usd
     return holdings
 
 

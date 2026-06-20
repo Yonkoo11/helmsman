@@ -15,7 +15,6 @@ persisted peak/daily risk state; a trade is only recorded once the chain confirm
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 
 from . import data_cmc, market_gate, portfolio, regime, state, strategy, token_registry
@@ -55,8 +54,7 @@ def attempt_trade(trade: ProposedTrade, pf: Portfolio, st: RiskState, day: str, 
                 print(f"[registry] {leg} not address-verified — {label} BLOCKED")
                 return False
 
-    ex = Executor(chain="bsc", dry_run=dry_run,
-                  password=None if dry_run else os.getenv("TWAK_WALLET_PASSWORD"))
+    ex = Executor(chain="bsc", dry_run=dry_run)
     q = ex.quote(trade.sell_symbol, trade.buy_symbol, trade.notional_usd)
     decision = evaluate(ProposedTrade(trade.sell_symbol, trade.buy_symbol,
                                       trade.notional_usd, q.slippage_bps), pf)
@@ -83,13 +81,46 @@ def attempt_trade(trade: ProposedTrade, pf: Portfolio, st: RiskState, day: str, 
         print(f"[exec]   {result.detail}")
         return False
     print(f"[exec]   submitted tx={result.tx_hash}")
-    if result.tx_hash and ex.confirm(result.tx_hash):
+    if not result.tx_hash:
+        print("[confirm] no tx hash returned — trade not recorded")
+        return False
+    status = ex.confirm(result.tx_hash)
+    if status == "confirmed":
         st.record_trade(trade.notional_usd, day)
         print(f"[confirm] on-chain confirmed; recorded. trades_total={st.trades_total}")
         print(f"[proof]  https://bscscan.com/tx/{result.tx_hash}")
         return True
-    print("[confirm] NOT confirmed — trade not recorded (state safe)")
+    if status == "pending":
+        # Slow confirm: persist the hash so the NEXT cycle reconciles it before
+        # trading again — never re-trade a swap that may still land (H-1).
+        st.pending_tx = result.tx_hash
+        st.pending_notional_usd = trade.notional_usd
+        print(f"[confirm] PENDING after timeout — persisted for reconciliation: {result.tx_hash}")
+        return False
+    print("[confirm] tx FAILED on-chain — not recorded")
     return False
+
+
+def reconcile_pending(st: RiskState, day: str) -> bool:
+    """Resolve a persisted pending tx before any new trade. Returns True if safe.
+
+    Closes the confirm-timeout double-trade window (H-1): a swap that was pending
+    at last cycle's timeout is re-checked; trading is skipped while it's unresolved.
+    """
+    if not st.pending_tx:
+        return True
+    status = Executor(chain="bsc").confirm(st.pending_tx, tries=3, delay_s=2.0)
+    if status == "confirmed":
+        st.record_trade(st.pending_notional_usd, day)
+        print(f"[reconcile] pending {st.pending_tx} confirmed; recorded")
+    elif status == "failed":
+        print(f"[reconcile] pending {st.pending_tx} failed on-chain; cleared")
+    else:
+        print(f"[reconcile] {st.pending_tx} STILL pending — skipping trades this cycle")
+        return False
+    st.pending_tx = ""
+    st.pending_notional_usd = 0.0
+    return True
 
 
 def strategy_pass(st: RiskState, day: str, *, dry_run: bool, execute: bool,

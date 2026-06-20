@@ -71,8 +71,13 @@ def build_registry(path: Path = REGISTRY_PATH) -> dict[str, dict]:
 
 
 def load_registry(path: Path = REGISTRY_PATH) -> dict[str, dict]:
+    # A MISSING file is a deployment error, not "nothing is tradable" — fail loud
+    # so a path/build bug can't degrade the scam-gate into a silent no-op (H-4).
     if not path.exists():
-        return {}
+        raise FileNotFoundError(
+            f"token registry not found at {path} — run "
+            "`python -m agent.token_registry --build`"
+        )
     return json.loads(path.read_text(encoding="utf-8"))
 
 

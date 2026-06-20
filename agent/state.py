@@ -22,6 +22,10 @@ def today_utc() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
 
 
+class CorruptStateError(RuntimeError):
+    """A state file exists but is unreadable — refuse to trade (don't reset risk)."""
+
+
 @dataclass
 class RiskState:
     peak_equity_usd: float = 0.0
@@ -29,6 +33,10 @@ class RiskState:
     traded_today_usd: float = 0.0
     last_trade_day_utc: str = ""
     trades_total: int = 0
+    # A submitted-but-not-yet-confirmed swap. Reconciled before any new trade so
+    # a slow-confirming tx is never double-traded (H-1).
+    pending_tx: str = ""
+    pending_notional_usd: float = 0.0
 
     # --- transitions (all pure given an injected `day`) ---
 
@@ -59,13 +67,15 @@ class RiskState:
 
 def load(path: Path = DEFAULT_PATH) -> RiskState:
     if not path.exists():
-        return RiskState()
+        return RiskState()  # fresh agent — no history yet
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         known = {f: data[f] for f in RiskState().__dict__ if f in data}
         return RiskState(**known)
-    except (json.JSONDecodeError, OSError, TypeError):
-        return RiskState()  # never let a corrupt state file halt the agent
+    except (json.JSONDecodeError, OSError, TypeError) as e:
+        # A corrupt EXISTING file must NOT silently reset peak/turnover to zero —
+        # that would disable the drawdown breaker. Halt instead (H-3).
+        raise CorruptStateError(f"state file {path} is unreadable: {e}") from e
 
 
 def save(state: RiskState, path: Path = DEFAULT_PATH) -> None:

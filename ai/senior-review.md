@@ -38,3 +38,19 @@ Partially addressed: 6 — tight slippage (--slippage 1) + a live-liquidity over
   but NO private/MEV-protected RPC yet (sandwich risk on public mempool remains; low EV
   on the small trade sizes used, but a real-capital week should route through a private RPC).
 Still open: 8 (equity x-check vs CMC prices), deeper multi-signal CMC regime, demo + writeups.
+
+## Independent audit pass (2026-06-20) — external agent review + fixes
+An independent auditor reviewed the money-path. Fixed:
+- H-2: removed password-from-argv path (was dormant/keychain; now impossible to leak).
+- H-1: confirm() returns confirmed/failed/PENDING; pending tx persisted + reconciled next
+  cycle before any new trade (no double-trade on slow confirms).
+- C-2/M-4: untrustworthy quote/liquidity data (missing priceImpact, non-finite/absurd liq)
+  now BLOCKS instead of passing as 0; strengthens the x402 gate.
+- M-3: portfolio rejects non-finite/negative/absurd usdValue (can't inflate the % caps).
+- M-1: x402 query address validated (^0x[40hex]$) + URL-encoded.
+- H-3: corrupt state file raises (halts) instead of zeroing peak (which disabled the breaker);
+  budget-exhaustion halts the cycle instead of forcing a qualify trade.
+- H-4: missing registry file fails loud instead of silent no-op.
+- L-2/L-3: ERC-8004 card reads guardrail numbers from RiskConfig; --wallet required.
+- 63 tests. Still open: M-2 (Permit2 MAX-approval bounded only by small wallet balance;
+  budget resets per-trade but <=2 calls/cycle so spend is bounded), backtest, always-on host.
