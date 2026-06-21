@@ -13,14 +13,8 @@ Helmsman
 **BUIDL logo**
 [upload a 480x480 PNG/JPEG under 2 MB]
 
-**Vision (the problem this project solves)**
-Self-custody users will not let an AI agent trade for them, because the two
-options on offer are both bad: hand your keys to a bot, or trust a black box not
-to blow up your account. Most trading agents make this worse. They are a thin
-wrapper around a single swap call, with the real risk controls missing, so one
-bad run can drain the wallet. Helmsman solves the trust problem: the agent signs
-every trade itself through Trust Wallet, the keys never leave you, and a hard
-risk layer makes it safe to leave running unattended.
+**Vision (the problem this project solves)**  [HARD LIMIT: 256 characters. Text below is 249.]
+Self-custody users won't let an AI bot trade for them: handing over keys is risky, and most trading agents have no real risk controls, so one bad run drains the wallet. Helmsman signs every trade itself and is built so it cannot blow up the account.
 
 **Category**
 Crypto / Web3 (secondary: AI / Robotics)
