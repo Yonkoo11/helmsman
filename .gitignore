@@ -48,3 +48,12 @@ deployments/local-*.json
 runtime/
 
 !.env.example
+
+# internal planning / review notes — kept local, not for the public submission
+ai/winplan.md
+ai/senior-review.md
+ai/progress.md
+ai/plan.md
+ai/memory.md
+ai/sponsor-integration.md
+ai/compliance-checklist.md

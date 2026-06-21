@@ -23,7 +23,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/ -q
 ## Before a PR
 1. `pytest` passes.
 2. New money-path logic has tests, including the failure cases.
-3. Run the live read (`python -m agent.orchestrator`) — it must not spend.
+3. Run the live read (`python -m agent.orchestrator`), it must not spend.
 4. Describe what you changed and how you verified it.
 
 ## Good first areas
