@@ -10,7 +10,7 @@ blowing up.
 (Best Use of TWAK, Best Use of CMC Agent Hub, Best Use of BNB AI Agent SDK).
 
 **Agent wallet (BSC):** `0xa7B70b8dC19196d0B9a2c9151568C66669Be957D`
-**Repo:** <github URL once pushed>   **Demo:** <video/loom URL>
+**Repo:** https://github.com/Yonkoo11/helmsman   **Demo:** <video/loom URL>
 
 ## What it does
 Helmsman reads CoinMarketCap data, scores a market regime, and rotates between a
