@@ -56,11 +56,14 @@ def test_no_qualify_when_already_traded(monkeypatch):
     assert not calls, "must not force a qualify trade when already traded today"
 
 
-def test_no_qualify_before_cutoff_hour(monkeypatch):
+def test_qualifies_on_first_cycle_any_hour(monkeypatch):
+    # New default (cutoff 0): the daily-qualify fires on the first cycle of the
+    # day even early on, so host uptime timing is irrelevant. The strategy held
+    # (mock returns no trade), so the qualify net must fire.
     st, calls = RiskState(), []
     _wire(monkeypatch, st, calls)
     runner.run_cycle(now=dt.datetime(2026, 6, 22, 9, tzinfo=dt.timezone.utc))
-    assert not calls, "must not force a qualify trade before the cutoff hour"
+    assert calls, "qualify must fire on the first cycle even early in the UTC day"
 
 
 def test_cycle_survives_strategy_failure(monkeypatch):

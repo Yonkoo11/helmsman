@@ -21,10 +21,12 @@ from .lock import AlreadyRunning, single_instance
 from .orchestrator import attempt_trade, reconcile_pending, strategy_pass
 from .x402_data import X402BudgetExhausted
 
-# Force the daily-qualify by MIDDAY UTC, not late evening: if the host sleeps in
-# the evening the late cutoff could miss the trade entirely (DQ). Noon gives the
-# strategy the morning to trade organically, then a wide afternoon catch window.
-QUALIFY_AFTER_UTC_HOUR = 12
+# Fire the daily-qualify on the FIRST cycle of each UTC day where the strategy
+# hasn't traded. This makes host uptime timing irrelevant: as long as the machine
+# is on for any single hourly cycle in the day, the required >=1 trade/day lands.
+# The strategy still trades on top whenever the regime warrants. (cutoff 0 = no
+# wait; the qualify only runs at all when the strategy already chose to hold.)
+QUALIFY_AFTER_UTC_HOUR = 0
 
 
 def should_qualify(*, ensure_daily: bool, has_traded_today: bool,
