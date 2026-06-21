@@ -46,3 +46,5 @@ venv/
 deployments/local-*.json
 
 runtime/
+
+!.env.example
