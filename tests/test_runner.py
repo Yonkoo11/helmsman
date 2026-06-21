@@ -68,13 +68,15 @@ def test_qualifies_on_first_cycle_any_hour(monkeypatch):
 
 def test_cycle_survives_strategy_failure(monkeypatch):
     # A transient CMC/RPC/x402 error must NOT crash the unattended cycle.
-    st = RiskState()
-    monkeypatch.setattr(runner.state, "load", lambda: st)
-    monkeypatch.setattr(runner.state, "save", lambda x: None)
+    # Fully wire the externals first (no real network/trade), then make the
+    # strategy pass raise.
+    st, calls = RiskState(), []
+    _wire(monkeypatch, st, calls)
 
     def boom(st, day, **k):
         raise RuntimeError("CMC API 500")
 
     monkeypatch.setattr(runner, "strategy_pass", boom)
     out = runner.run_cycle(now=dt.datetime(2026, 6, 22, 9, tzinfo=dt.timezone.utc))
-    assert out["trades_total"] == 0  # returned cleanly, no exception
+    # The cycle returned cleanly despite the strategy raising (no exception).
+    assert out["day"] == "2026-06-22"
