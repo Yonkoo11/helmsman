@@ -1,4 +1,4 @@
-# DoraHacks BUIDL submission — copy/paste by form tab
+# DoraHacks BUIDL submission (copy-paste by form tab)
 
 The DoraHacks form has five tabs: Profile, Details, Team, Contact, Submission.
 Each field below is labelled to match. Items in [brackets] are yours to provide.
