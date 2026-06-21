@@ -54,7 +54,7 @@ neutral holds. It is trend-aware on purpose. A backtest showed that a contrarian
 "buy the dip" default underperforms in downtrends, so momentum is the dominant
 factor. Across BTC, ETH and BNB and across walk-forward sub-periods, the strategy
 cut drawdown below buy-and-hold in every window (see
-[`ai/backtest-report.md`](ai/backtest-report.md)). It trades rally upside for
+[`docs/backtest-report.md`](docs/backtest-report.md)). It trades rally upside for
 materially lower drawdown, which is the "don't blow up" posture the contest rewards.
 
 ## Run it
