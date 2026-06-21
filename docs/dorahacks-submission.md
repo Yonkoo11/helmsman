@@ -68,10 +68,14 @@ Python agent (regime, guardrails, risk state), Trust Wallet Agent Kit (TWAK) for
 signing and execution, CoinMarketCap Agent Hub for data, BNB Agent SDK for the
 x402 budget tracker and ERC-8004 identity, BNB Smart Chain.
 
+**Is this BUIDL an AI Agent?** (required toggle)
+YES. Helmsman is an autonomous AI trading agent (it reads markets, decides, and signs/sends its own transactions).
+
 **Demo video**
 [optional link. The README has full setup and run instructions.]
 
-**Repository**
+## Links
+**GitHub / Gitlab / Bitbucket** (required)
 https://github.com/Yonkoo11/helmsman
 
 ================================================================
