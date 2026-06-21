@@ -28,6 +28,16 @@ from .x402_data import X402BudgetExhausted
 # wait; the qualify only runs at all when the strategy already chose to hold.)
 QUALIFY_AFTER_UTC_HOUR = 0
 
+# Live trading window (UTC dates, inclusive). The agent runs continuously but
+# only trades inside this window, so the scheduler can be loaded NOW and it
+# auto-starts at the open and stops at the close. No manual action at the boundary.
+COMP_START = "2026-06-22"
+COMP_END = "2026-06-28"
+
+
+def in_competition_window(day: str) -> bool:
+    return COMP_START <= day <= COMP_END
+
 
 def should_qualify(*, ensure_daily: bool, has_traded_today: bool,
                    hour_utc: int, qualify_after_hour: int) -> bool:
@@ -47,6 +57,14 @@ def run_cycle(*, ensure_daily: bool = True,
         state.save(st)
         return {"traded_today": st.has_traded_on(day), "trades_total": st.trades_total,
                 "day": day, "blocked": "pending-tx"}
+
+    # 0b. Trade only inside the live competition window. Outside it, do nothing
+    #     (no CMC/x402 calls, no trades) so the scheduler is safe to run early.
+    if not in_competition_window(day):
+        print(f"[window] {day} outside competition window {COMP_START}..{COMP_END} — idle")
+        state.save(st)
+        return {"traded_today": False, "trades_total": st.trades_total,
+                "day": day, "blocked": "outside-window"}
 
     # 1. Strategy pass (live). A transient CMC/RPC/x402 error logs and continues;
     #    a data-spend budget exhaustion HALTS the cycle (no forced qualify) — H-3.
