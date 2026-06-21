@@ -143,7 +143,7 @@ with open(f"{A}/concat.txt", "w") as f:
     for s in segs:
         f.write(f"file '{os.path.basename(s)}'\n")
 subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", f"{A}/concat.txt",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart",
                 "video/helmsman-demo.mp4"], capture_output=True)
 out = subprocess.run(["ffprobe", "-v", "0", "-show_entries", "format=duration", "-of", "csv=p=0",
                       "video/helmsman-demo.mp4"], capture_output=True, text=True).stdout.strip()
