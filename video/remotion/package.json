@@ -1,0 +1,18 @@
+{
+  "name": "helmsman-demo-remotion",
+  "version": "1.0.0",
+  "scripts": {
+    "studio": "npx remotion studio",
+    "render": "npx remotion render HelmsmanDemo helmsman-demo.mp4 --codec h264"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.232",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "remotion": "4.0.232"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.4.0"
+  }
+}
