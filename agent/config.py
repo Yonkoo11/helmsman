@@ -42,8 +42,12 @@ class RiskConfig:
     per_trade_cap_pct: float = 10.0
     # Cumulative same-day turnover ceiling, as a fraction of current equity.
     daily_turnover_cap_pct: float = 40.0
-    # Max share of equity allowed in any one non-stable token after a trade.
-    max_position_pct: float = 35.0
+    # Max share of equity in any one non-stable token after a trade. ETH is the
+    # only risk asset, so this is the binding constraint on risk-on participation.
+    # Set so the strategy can express the allocation the backtest validated, while
+    # the 15% drawdown breaker remains the hard stop (at this exposure the breaker
+    # still caps portfolio drawdown well under the 30% disqualify line).
+    max_position_pct: float = 65.0
     # Never let a trade pull equity below this USD floor (contest scores any
     # hour starting <= $1 as 0% — keep capital deployed).
     dust_floor_usd: float = 5.0

@@ -69,8 +69,8 @@ def test_cannot_sell_more_than_held():
 
 
 def test_concentration_cap_refused():
-    # Already 30% in ETH; buying 10% more pushes to 40% > 35% max position.
-    pf = healthy_pf(holdings_usd={"USDT": 600.0, "ETH": 300.0, "BNB": 100.0})
+    # Already 60% in ETH; buying 10% more pushes to 70% > 65% max position.
+    pf = healthy_pf(holdings_usd={"USDT": 300.0, "ETH": 600.0, "BNB": 100.0})
     d = evaluate(ProposedTrade("USDT", "ETH", 100.0, quoted_slippage_bps=10), pf, CFG)
     assert not d.allowed
     assert any("max" in r and "position" in r for r in d.reasons)
